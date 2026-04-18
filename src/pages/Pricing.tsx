@@ -1,12 +1,16 @@
 import { motion } from "framer-motion";
-import { Check, Sparkles, Phone, PhoneIncoming, PhoneOutgoing, Lock, CheckCircle2 } from "lucide-react";
+import { Check, Sparkles, Phone, PhoneIncoming, PhoneOutgoing, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MarketingNav } from "@/components/MarketingNav";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { cn } from "@/lib/utils";
-import { openRazorpayCheckout, loadRazorpayScript } from "@/lib/razorpay";
-import { useEffect } from "react";
+import { loadRazorpayScript, openRazorpayCheckout } from "@/lib/razorpay";
+import { useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { useAppStore } from "@/store/useAppStore";
+import { toast } from "sonner";
 
 // ─────────────────────────────────────────────
 // Plan definitions
@@ -100,61 +104,6 @@ const tiers = [
 ];
 
 // ─────────────────────────────────────────────
-// Razorpay Action
-// ─────────────────────────────────────────────
-
-import { supabase } from "@/lib/supabase";
-import { useAppStore } from "@/store/useAppStore";
-import { toast } from "sonner";
-
-const handleRazorpay = async (plan: typeof tiers[number]) => {
-  if (!plan.razorpay) {
-    if (plan.price === "₹0") { window.location.href = "/auth"; return; }
-    alert("Contact our sales team at sales@startupguardian.in to set up Enterprise billing.");
-    return;
-  }
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    window.location.href = `/auth?redirect=pricing&plan=${plan.name.toLowerCase()}`;
-    return;
-  }
-
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-  
-  if (profile && !profile.trial_used) {
-    const planId = plan.name.toLowerCase();
-    const tokens = planId === "pro" ? 999999 : 200;
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 14);
-
-    await supabase.from("profiles").update({
-      plan: planId,
-      tokens_remaining: tokens,
-      subscription_end_date: endDate.toISOString(),
-      trial_used: true,
-      updated_at: new Date().toISOString(),
-    }).eq("id", user.id);
-
-    useAppStore.setState({ userPlan: planId as "starter"|"pro", tokens });
-    toast.success(`14-Day Free Trial activated for ${plan.name} plan!`);
-    window.location.href = "/dashboard";
-    return;
-  }
-
-  const planId = plan.name.toLowerCase() as "starter" | "pro";
-  
-  try {
-    console.log(`Initiating checkout for ${planId}...`);
-    await openRazorpayCheckout(planId);
-  } catch (err: any) {
-    console.error("Razorpay Error:", err);
-    alert("Failed to initiate checkout: " + err.message);
-  }
-};
-
-// ─────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────
 
@@ -166,22 +115,94 @@ const fade = (delay = 0) => ({
 });
 
 const Pricing = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const autoCheckoutTriggered = useRef(false);
+
+  // Handle plan button clicks
+  const handlePlanClick = async (plan: typeof tiers[number]) => {
+    // Free plan — go to auth/dashboard
+    if (!plan.razorpay) {
+      if (plan.price === "₹0") {
+        navigate("/auth");
+        return;
+      }
+      alert("Contact our sales team at sales@startupguardian.in to set up Enterprise billing.");
+      return;
+    }
+
+    // Check auth
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate(`/auth?redirect=pricing&plan=${plan.name.toLowerCase()}`);
+      return;
+    }
+
+    await processPlanForUser(plan, user);
+  };
+
+  const processPlanForUser = async (plan: typeof tiers[number], user: any) => {
+    const planId = plan.name.toLowerCase() as "starter" | "pro";
+
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("trial_used")
+        .eq("id", user.id)
+        .single();
+
+      // First-time trial: bypass payment
+      if (profile && !profile.trial_used) {
+        const tokens = planId === "pro" ? 999999 : 200;
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 14);
+
+        await supabase.from("profiles").update({
+          plan: planId,
+          tokens_remaining: tokens,
+          subscription_end_date: endDate.toISOString(),
+          trial_used: true,
+          updated_at: new Date().toISOString(),
+        }).eq("id", user.id);
+
+        useAppStore.setState({ userPlan: planId, tokens });
+        toast.success(`🎉 14-Day Free Trial activated for ${plan.name} plan!`);
+        navigate("/dashboard");
+        return;
+      }
+    } catch (e) {
+      console.warn("Could not check trial status, proceeding to payment", e);
+    }
+
+    // Trial already used — open Razorpay
+    try {
+      await openRazorpayCheckout(planId);
+    } catch (err: any) {
+      console.error("Razorpay Error:", err);
+      toast.error("Failed to initiate checkout: " + err.message);
+    }
+  };
+
   useEffect(() => {
     loadRazorpayScript().catch(() => {});
-    
-    // Auto checkout if returning from Auth
-    const params = new URLSearchParams(window.location.search);
-    const checkoutPlan = params.get("checkout");
-    if (checkoutPlan) {
+
+    // Auto-trigger checkout when coming back from Auth (?checkout=pro)
+    const checkoutPlan = searchParams.get("checkout");
+    if (checkoutPlan && !autoCheckoutTriggered.current) {
+      autoCheckoutTriggered.current = true;
       const planToCheckout = tiers.find(t => t.name.toLowerCase() === checkoutPlan);
       if (planToCheckout) {
-        // slight delay to let state initialize
-        setTimeout(() => handleRazorpay(planToCheckout), 500);
-        // Clear param from URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // Small delay so Supabase session is established
+        setTimeout(async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await processPlanForUser(planToCheckout, user);
+          }
+        }, 800);
       }
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -239,7 +260,7 @@ const Pricing = () => {
               className={cn("group relative transition-all duration-300", t.highlight && "lg:-mt-6")}
             >
               {t.badge && (
-                <motion.div 
+                <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   whileInView={{ scale: 1, opacity: 1 }}
                   transition={{ delay: i * 0.1 + 0.4, type: "spring" }}
@@ -281,8 +302,8 @@ const Pricing = () => {
 
                 <ul className="relative mt-6 flex-1 space-y-3.5">
                   {t.features.map((f, idx) => (
-                    <motion.li 
-                      key={f.text} 
+                    <motion.li
+                      key={f.text}
                       initial={{ opacity: 0, x: -5 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.1 + idx * 0.05 + 0.3 }}
@@ -310,7 +331,8 @@ const Pricing = () => {
                 </ul>
 
                 <Button
-                  onClick={() => handleRazorpay(t)}
+                  id={`plan-btn-${t.name.toLowerCase()}`}
+                  onClick={() => handlePlanClick(t)}
                   className={cn(
                     "relative mt-8 w-full font-semibold transition-all duration-300",
                     t.highlight
@@ -327,7 +349,7 @@ const Pricing = () => {
           ))}
         </div>
 
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           className="mx-auto mt-16 max-w-2xl text-center text-sm text-muted-foreground"

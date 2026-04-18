@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,10 @@ import { useAppStore } from "@/store/useAppStore";
 import { Mail, Lock, ArrowRight, ShieldCheck, Phone, User, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signIn, signUp } from "@/lib/authService";
-import { supabase } from "@/lib/supabase";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAppStore();
 
   const [isLogin, setIsLogin] = useState(false);
@@ -32,9 +32,8 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const params = new URLSearchParams(window.location.search);
-      const redirect = params.get("redirect");
-      const plan = params.get("plan");
+      const redirect = searchParams.get("redirect");
+      const plan = searchParams.get("plan");
 
       if (isLogin) {
         // ── Sign In ──
