@@ -21,6 +21,8 @@ export interface Database {
           jurisdiction: string;
           created_at: string;
           updated_at: string;
+          subscription_end_date: string | null;
+          trial_used: boolean;
         };
         Insert: Omit<Database["public"]["Tables"]["profiles"]["Row"], "created_at" | "updated_at">;
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;

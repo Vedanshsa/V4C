@@ -103,10 +103,43 @@ const tiers = [
 // Razorpay Action
 // ─────────────────────────────────────────────
 
+import { supabase } from "@/lib/supabase";
+import { useAppStore } from "@/store/useAppStore";
+import { toast } from "sonner";
+
 const handleRazorpay = async (plan: typeof tiers[number]) => {
   if (!plan.razorpay) {
     if (plan.price === "₹0") { window.location.href = "/auth"; return; }
     alert("Contact our sales team at sales@startupguardian.in to set up Enterprise billing.");
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    window.location.href = `/auth?redirect=pricing&plan=${plan.name.toLowerCase()}`;
+    return;
+  }
+
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  
+  if (profile && !profile.trial_used) {
+    const planId = plan.name.toLowerCase();
+    const tokens = planId === "pro" ? 999999 : 200;
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 14);
+
+    await supabase.from("profiles").update({
+      plan: planId,
+      tokens_remaining: tokens,
+      subscription_end_date: endDate.toISOString(),
+      trial_used: true,
+      updated_at: new Date().toISOString(),
+    }).eq("id", user.id);
+
+    useAppStore.setState({ userPlan: planId as "starter"|"pro", tokens });
+    toast.success(`14-Day Free Trial activated for ${plan.name} plan!`);
+    window.location.href = "/dashboard";
     return;
   }
 
@@ -133,7 +166,22 @@ const fade = (delay = 0) => ({
 });
 
 const Pricing = () => {
-  useEffect(() => { loadRazorpayScript().catch(() => {}); }, []);
+  useEffect(() => {
+    loadRazorpayScript().catch(() => {});
+    
+    // Auto checkout if returning from Auth
+    const params = new URLSearchParams(window.location.search);
+    const checkoutPlan = params.get("checkout");
+    if (checkoutPlan) {
+      const planToCheckout = tiers.find(t => t.name.toLowerCase() === checkoutPlan);
+      if (planToCheckout) {
+        // slight delay to let state initialize
+        setTimeout(() => handleRazorpay(planToCheckout), 500);
+        // Clear param from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">

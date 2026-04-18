@@ -6,7 +6,7 @@
 import { supabase } from "./supabase";
 import type { Database } from "./database.types";
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 // ─────────────────────────────────────────────
 // Auth
@@ -44,6 +44,8 @@ export async function signUp({ email, password, fullName, phone }: SignUpData) {
       outbound_calls_used: 0,
       outbound_calls_limit: 0,
       jurisdiction: "in",
+      trial_used: false,
+      subscription_end_date: null,
     });
 
     if (profileError) console.error("Profile creation error:", profileError.message);

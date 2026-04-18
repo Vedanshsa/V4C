@@ -32,11 +32,19 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+      const plan = params.get("plan");
+
       if (isLogin) {
         // ── Sign In ──
         await signIn(email, password);
         login();
-        navigate("/dashboard");
+        if (redirect === "pricing") {
+          navigate(`/pricing?checkout=${plan}`);
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         // ── Sign Up ──
         if (!phone.match(/^[6-9]\d{9}$/)) {
@@ -49,7 +57,11 @@ const Auth = () => {
         if (session) {
           // If 'Confirm Email' is OFF in Supabase Dashboard, we get a session immediately
           login();
-          navigate("/dashboard");
+          if (redirect === "pricing") {
+             navigate(`/pricing?checkout=${plan}`);
+          } else {
+             navigate("/dashboard");
+          }
         } else {
           // If 'Confirm Email' is ON, we show the success message
           setSuccess("Account created! Check your email to confirm, then sign in.");

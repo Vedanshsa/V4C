@@ -16,7 +16,8 @@ import { useAppStore } from "./store/useAppStore";
 import { Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { getProfile } from "@/lib/authService";
+import { getProfile, updateProfile } from "@/lib/authService";
+import { toast } from "sonner";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
@@ -29,20 +30,34 @@ const AuthStateSync = () => {
   const { login, logout } = useAppStore();
 
   useEffect(() => {
+    const processProfile = async (session: any) => {
+      let profile = await getProfile(session.user.id);
+      if (profile) {
+        // Evaluate Expiration
+        if (profile.subscription_end_date && new Date(profile.subscription_end_date) < new Date()) {
+          // Downgrade Plan
+          await updateProfile(session.user.id, {
+            plan: "free",
+            tokens_remaining: 20,
+            subscription_end_date: null,
+          });
+          profile = await getProfile(session.user.id); // reload
+          toast.info("Your subscription has ended. You are now on the Free plan. Consider renewing your plan to keep premium features!");
+        }
+
+        useAppStore.setState({
+          tokens: profile!.tokens_remaining,
+          userPlan: profile!.plan,
+          profile: { ...useAppStore.getState().profile, businessType: profile!.jurisdiction },
+        });
+        login();
+      }
+    };
+
     // 1. Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        // Fetch up-to-date plan / limits from our tables
-        const profile = await getProfile(session.user.id);
-        if (profile) {
-          useAppStore.setState({
-            tokens: profile.tokens_remaining,
-            userPlan: profile.plan,
-            // Re-sync basic jurisdiction config to Zustand
-            profile: { ...useAppStore.getState().profile, businessType: profile.jurisdiction },
-          });
-        }
-        login(); // Sets isAuthenticated = true
+        await processProfile(session);
       } else {
         logout(); // Disconnects session
       }
@@ -51,11 +66,7 @@ const AuthStateSync = () => {
     // 2. Initial manual fetch
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const profile = await getProfile(session.user.id);
-        if (profile) {
-          useAppStore.setState({ tokens: profile.tokens_remaining, userPlan: profile.plan, profile: { ...useAppStore.getState().profile, businessType: profile.jurisdiction } });
-        }
-        login();
+        await processProfile(session);
       } else {
         logout();
       }

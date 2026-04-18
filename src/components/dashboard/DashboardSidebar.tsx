@@ -84,6 +84,12 @@ export function DashboardSidebar() {
               style={{ width: userPlan === "pro" ? "100%" : `${(tokens / (typeof tokenLimit === "number" ? tokenLimit : 20)) * 100}%` }}
             />
           </div>
+          <div className="mt-3 flex items-center gap-1.5 border-t border-white/10 pt-2">
+            <ShieldCheck className="h-3.5 w-3.5 text-brand-teal" />
+            <span className="text-[10px] font-semibold text-sidebar-foreground/80 uppercase">
+              Active Services: {userPlan === "pro" ? "4 (All)" : userPlan === "starter" ? "3" : "1"}
+            </span>
+          </div>
         </div>
       </div>
 

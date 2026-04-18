@@ -130,21 +130,22 @@ export async function openRazorpayCheckout(plan: "starter" | "pro"): Promise<voi
     return;
   }
 
-  const options: RazorpayOptions = {
+  const options: any = {
     key: (import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SehDTzdgNAwyc7") as string,
     amount,
     currency: "INR",
     name: "Startup Guardian",
     description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan - AI Legal Copilot`,
-    order_id: orderId, 
+    ...(orderId ? { order_id: orderId } : {}),
     prefill: {
       name: user?.user_metadata?.full_name || "",
       email: user?.email || "",
       contact: user?.user_metadata?.phone || "",
     },
     theme: { color: "#8B5CF6" },
-    handler: async (response) => {
+    handler: async (response: any) => {
       console.log("Razorpay Success Response:", response);
+
       
       try {
         // 1. Record the payment in Supabase
@@ -161,10 +162,13 @@ export async function openRazorpayCheckout(plan: "starter" | "pro"): Promise<voi
         // 2. Update user's profile with the new plan and token allocation
         // Pro = Unlimited (999999), Starter = 200
         const tokens = plan === "pro" ? 999999 : 200;
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30);
         
         await supabase.from("profiles").update({
           plan,
           tokens_remaining: tokens,
+          subscription_end_date: endDate.toISOString(),
           updated_at: new Date().toISOString(),
         }).eq("id", user.id);
         
