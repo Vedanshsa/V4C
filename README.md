@@ -289,12 +289,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
-## 👨‍💻 Author
-
-**Vedansh** - [@Vedanshsa](https://github.com/Vedanshsa)
-
----
-
 ## 🎉 Acknowledgments
 
 - [LiveKit](https://livekit.io) - Voice AI infrastructure
