@@ -232,7 +232,7 @@ const Pricing = () => {
           <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
             <span className="flex items-center gap-2">
               <PhoneIncoming className="h-4 w-4 text-brand-teal" />
-              <strong>Inbound</strong> — Ask questions on <strong className="text-foreground">9999999999</strong>
+              <strong>Inbound</strong> — Ask questions on <strong className="text-foreground"><a href="tel:+911171366946" className="hover:underline">+91 1171366946</a></strong>
             </span>
             <span className="flex items-center gap-2">
               <PhoneOutgoing className="h-4 w-4 text-brand-purple" />
@@ -354,7 +354,7 @@ const Pricing = () => {
           whileInView={{ opacity: 1 }}
           className="mx-auto mt-16 max-w-2xl text-center text-sm text-muted-foreground"
         >
-          All plans include encrypted document storage, jurisdiction-aware analysis (India only), and access to call number <strong className="text-foreground">9999999999</strong>.
+          All plans include encrypted document storage, jurisdiction-aware analysis (India only), and access to call number <strong className="text-foreground"><a href="tel:+911171366946" className="hover:underline">+91 1171366946</a></strong>.
           Calls outside India are not supported. Razorpay is the exclusive payment processor.
         </motion.p>
       </section>
@@ -375,7 +375,7 @@ const Pricing = () => {
                 color: "text-brand-teal",
                 bg: "bg-brand-teal/10",
                 title: "Inbound Calls",
-                desc: "Call 9999999999 anytime to ask legal questions about your documents. Free users get 3 calls/month. Starter & above get expanded quotas. Pro gets unlimited.",
+                desc: <>Call <a href="tel:+911171366946" className="hover:underline font-medium">+91 1171366946</a> anytime to ask legal questions about your documents. Free users get 3 calls/month. Starter & above get expanded quotas. Pro gets unlimited.</>,
                 restrict: "Free plan: 3 calls/month",
               },
               {

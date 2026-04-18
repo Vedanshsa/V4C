@@ -219,7 +219,7 @@ const Landing = () => {
               ))}
             </ul>
             <Button asChild size="lg" className="mt-8 bg-gradient-brand text-white shadow-glow hover:opacity-95">
-              <a href="tel:9999999999">Call AI: 9999999999 <Phone className="ml-2 h-4 w-4" /></a>
+              <a href="tel:+911171366946">Call AI: +91 1171366946 <Phone className="ml-2 h-4 w-4" /></a>
             </Button>
           </motion.div>
 
@@ -246,7 +246,7 @@ const Landing = () => {
                   ))}
                 </div>
                 <p className="mt-8 text-center text-xl font-bold text-gradient">
-                  9999999999
+                  <a href="tel:+911171366946">+91 1171366946</a>
                 </p>
                 <p className="mt-2 text-center text-sm font-medium text-muted-foreground">
                   Available 24/7 for legal queries

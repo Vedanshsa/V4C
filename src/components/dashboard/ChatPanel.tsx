@@ -89,7 +89,7 @@ export function ChatPanel() {
             size="sm"
             className="rounded-full bg-gradient-brand text-white shadow-glow hover:opacity-95"
           >
-            <a href="tel:9999999999">Call AI (9999999999)</a>
+            <a href="tel:+911171366946">Call AI (+91 1171366946)</a>
           </Button>
         </div>
       </div>
